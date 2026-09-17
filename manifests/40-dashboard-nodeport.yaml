@@ -1,0 +1,25 @@
+# ---------------------------------------------------------------------------
+# Publica el Dashboard de Kubernetes en el puerto 30090.
+#
+# Se crea un Service nuevo en lugar de modificar el del complemento, porque
+# minikube reconcilia sus propios objetos y revertiría el cambio.
+#
+# ATENCIÓN: el Dashboard del complemento de minikube no pide autenticación.
+# La regla del NSG debe permitir únicamente su IP pública.
+# ---------------------------------------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard-nodeport
+  namespace: kubernetes-dashboard
+  labels:
+    proposito: laboratorio-kubernetes
+spec:
+  type: NodePort
+  selector:
+    k8s-app: kubernetes-dashboard
+  ports:
+    - name: http
+      port: 80
+      targetPort: 9090
+      nodePort: 30090

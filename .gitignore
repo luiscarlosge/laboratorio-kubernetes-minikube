@@ -1,0 +1,12 @@
+# Artefactos locales del laboratorio
+*.log
+.DS_Store
+mi-service.yaml          # el Service que escribe el estudiante en la Parte 10
+
+# Estado de minikube y credenciales (nunca deben viajar al repositorio)
+.minikube/
+.kube/
+*.pem
+*.key
+id_rsa*
+id_ed25519*

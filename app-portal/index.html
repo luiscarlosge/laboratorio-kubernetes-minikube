@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portal — Laboratorio de Kubernetes</title>
+<style>
+  :root{ --tinta:#12263a; --papel:#edf0f3; --acento:#0b6e6a; --laton:#a8823c; --linea:#cfd8e0; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--papel);color:var(--tinta);
+       font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6}
+  header{background:var(--tinta);color:#e7eef4;padding:3rem 1.5rem}
+  header div{max-width:760px;margin:0 auto}
+  h1{margin:0 0 .5rem;font-size:2rem;letter-spacing:-.01em}
+  header p{margin:0;color:#b9c9d6}
+  main{max-width:760px;margin:0 auto;padding:2.5rem 1.5rem}
+  h2{font-size:1.2rem;border-bottom:2px solid var(--tinta);padding-bottom:.4rem}
+  .ficha{background:#fff;border:1px solid var(--linea);border-top:3px solid var(--laton);
+         padding:1.2rem;margin:1.5rem 0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.88rem}
+  .ficha dl{display:grid;grid-template-columns:auto 1fr;gap:.4rem 1rem;margin:0}
+  .ficha dt{color:#6b8199}
+  .ficha dd{margin:0;word-break:break-all}
+  .ficha dd#p-pod{color:var(--acento);font-weight:600}
+  button{background:var(--acento);color:#fff;border:0;padding:.6rem 1.1rem;
+         border-radius:2px;font-size:.9rem;cursor:pointer;font-family:inherit}
+  button:hover{background:#095a57}
+  footer{border-top:1px solid var(--linea);margin-top:2.5rem;padding-top:1rem;font-size:.85rem;color:#5a7288}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <!-- ▼ EDITE ESTAS DOS LÍNEAS CON SUS DATOS ▼ -->
+    <h1>Portal de Servicios</h1>
+    <p>Desplegado por: Nombre Apellido — Maestría en Gestión de Información y Tecnología</p>
+  </div>
+</header>
+
+<main>
+  <h2>Qué es esto</h2>
+  <p>Esta página vive en una imagen de contenedor que usted construyó con un
+     <code>Dockerfile</code>, cargó en el clúster y publicó con un Service de tipo
+     NodePort en el puerto 30081. Es el mismo ciclo que siguió la guía del
+     laboratorio, pero esta vez de principio a fin por su cuenta.</p>
+
+  <h2>Quién respondió</h2>
+  <div class="ficha">
+    <dl>
+      <dt>Pod</dt><dd id="p-pod">consultando…</dd>
+      <dt>IP</dt><dd id="p-ip">—</dd>
+      <dt>Nodo</dt><dd id="p-nodo">—</dd>
+      <dt>Imagen</dt><dd id="p-img">—</dd>
+    </dl>
+  </div>
+  <button id="p-btn" type="button">Pedir la página otra vez</button>
+
+  <footer>
+    <p>Escale el Deployment a tres réplicas y vuelva a pulsar el botón:
+       el nombre del Pod debería cambiar.</p>
+  </footer>
+</main>
+
+<script>
+  async function cargar(){
+    try{
+      const r = await fetch('pod.json?t=' + Date.now(), {cache:'no-store'});
+      const d = await r.json();
+      document.getElementById('p-pod').textContent  = d.pod;
+      document.getElementById('p-ip').textContent   = d.ip;
+      document.getElementById('p-nodo').textContent = d.nodo;
+      document.getElementById('p-img').textContent  = d.imagen;
+    }catch(e){
+      document.getElementById('p-pod').textContent = 'sin datos del Pod';
+    }
+  }
+  document.getElementById('p-btn').addEventListener('click', cargar);
+  cargar();
+</script>
+</body>
+</html>

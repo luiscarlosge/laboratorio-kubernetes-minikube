@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laboratorio de Kubernetes · guía servida desde el clúster</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --tinta:#12263a;
+    --tinta-suave:#41566b;
+    --papel:#edf0f3;
+    --superficie:#ffffff;
+    --verdigris:#0b6e6a;
+    --laton:#a8823c;
+    --senal:#b3372e;
+    --linea:#cfd8e0;
+    --medida:66ch;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+  body{
+    margin:0;
+    background:var(--papel);
+    color:var(--tinta);
+    font-family:"IBM Plex Serif",Georgia,"Times New Roman",serif;
+    font-size:17px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,th,.sans{font-family:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;font-weight:600;line-height:1.2}
+  code,pre,.mono{font-family:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+  a{color:var(--verdigris);text-underline-offset:3px}
+  a:focus-visible,button:focus-visible{outline:3px solid var(--laton);outline-offset:3px}
+
+  /* ---------- Portada ---------- */
+  .portada{background:var(--tinta);color:#e7eef4;padding:clamp(2.5rem,6vw,5rem) 1.5rem 3rem}
+  .portada-inner{max-width:1080px;margin:0 auto;display:grid;gap:2.5rem;grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr);align-items:center}
+  @media(max-width:860px){.portada-inner{grid-template-columns:1fr}}
+  .curso{font-family:"IBM Plex Mono",monospace;font-size:.8rem;letter-spacing:.06em;color:#8fb3b1;margin:0 0 1rem}
+  .portada h1{font-size:clamp(2rem,4.6vw,3.15rem);margin:0 0 1rem;letter-spacing:-.02em}
+  .portada p{margin:0;max-width:46ch;color:#b9c9d6;font-size:1.05rem}
+
+  /* ---------- Tarjeta de identidad del Pod ---------- */
+  .identidad{
+    background:#0b1a29;border:1px solid #23415b;border-radius:2px;
+    padding:1.4rem 1.5rem;font-family:"IBM Plex Mono",monospace;font-size:.85rem;
+    box-shadow:inset 0 0 0 1px rgba(168,130,60,.18);
+  }
+  .identidad h2{font-family:inherit;font-size:.78rem;font-weight:500;color:var(--laton);margin:0 0 1.1rem;letter-spacing:.04em}
+  .identidad dl{display:grid;grid-template-columns:auto 1fr;gap:.5rem 1rem;margin:0}
+  .identidad dt{color:#7d98ad}
+  .identidad dd{margin:0;color:#e9f2f8;word-break:break-all}
+  .identidad dd.destacado{color:#55d6c2}
+  .identidad button{
+    margin-top:1.3rem;width:100%;background:transparent;border:1px solid var(--laton);color:var(--laton);
+    font-family:inherit;font-size:.82rem;padding:.6rem;border-radius:2px;cursor:pointer;
+  }
+  .identidad button:hover{background:var(--laton);color:#0b1a29}
+  .parpadeo{animation:destello .5s ease-out}
+  @keyframes destello{from{background:rgba(85,214,194,.25)}to{background:transparent}}
+
+  /* ---------- Cuerpo ---------- */
+  .lienzo{max-width:1080px;margin:0 auto;padding:0 1.5rem;display:grid;grid-template-columns:200px minmax(0,1fr);gap:3rem;align-items:start}
+  @media(max-width:860px){.lienzo{grid-template-columns:1fr;gap:1rem}}
+  nav.bitacora{position:sticky;top:2rem;padding:2.5rem 0;font-family:"IBM Plex Sans",sans-serif;font-size:.86rem}
+  @media(max-width:860px){nav.bitacora{position:static;padding:1.5rem 0 0;border-bottom:1px solid var(--linea)}}
+  nav.bitacora ol{list-style:none;margin:0;padding:0;border-left:2px solid var(--linea)}
+  nav.bitacora li a{display:block;padding:.35rem 0 .35rem .9rem;margin-left:-2px;border-left:2px solid transparent;color:var(--tinta-suave);text-decoration:none}
+  nav.bitacora li a:hover{color:var(--verdigris);border-left-color:var(--verdigris)}
+
+  main{padding:2.5rem 0 4rem;max-width:var(--medida)}
+  section{margin-bottom:3.5rem;scroll-margin-top:1.5rem}
+  h2{font-size:1.6rem;margin:0 0 1rem;padding-bottom:.5rem;border-bottom:2px solid var(--tinta)}
+  h3{font-size:1.1rem;margin:2rem 0 .5rem;color:var(--verdigris)}
+  p{margin:0 0 1rem}
+  ul,ol{margin:0 0 1rem;padding-left:1.3rem}
+  li{margin-bottom:.4rem}
+  strong{font-weight:600}
+
+  code{background:#dde4ea;padding:.1em .35em;border-radius:2px;font-size:.87em}
+  pre{background:var(--tinta);color:#dfe9f1;padding:1rem 1.15rem;border-radius:2px;overflow-x:auto;font-size:.83rem;line-height:1.6;margin:0 0 1.2rem}
+  pre code{background:none;padding:0;color:inherit;font-size:1em}
+  pre .c{color:#7f9bb0}
+
+  table{width:100%;border-collapse:collapse;margin:0 0 1.4rem;font-size:.92rem}
+  th{text-align:left;background:var(--tinta);color:#fff;padding:.55rem .7rem;font-size:.85rem}
+  td{padding:.55rem .7rem;border-bottom:1px solid var(--linea);vertical-align:top;background:var(--superficie)}
+  td:first-child{font-family:"IBM Plex Mono",monospace;font-size:.85rem;white-space:nowrap}
+
+  .nota{border-left:3px solid var(--verdigris);background:var(--superficie);padding:.9rem 1.1rem;margin:0 0 1.3rem;font-size:.95rem}
+  .aviso{border-left-color:var(--senal)}
+  .nota p:last-child{margin-bottom:0}
+  .nota b{font-family:"IBM Plex Sans",sans-serif}
+
+  ol.pasos{list-style:none;padding:0;counter-reset:paso}
+  ol.pasos > li{counter-increment:paso;position:relative;padding-left:3rem;margin-bottom:2.5rem}
+  ol.pasos > li::before{
+    content:counter(paso);position:absolute;left:0;top:.05rem;
+    width:2rem;height:2rem;border:1px solid var(--laton);border-radius:50%;
+    display:grid;place-items:center;font-family:"IBM Plex Mono",monospace;font-size:.85rem;color:var(--laton);
+  }
+  ol.pasos h3{margin-top:0}
+
+  .pregunta{background:var(--superficie);border:1px solid var(--linea);border-top:3px solid var(--laton);padding:1rem 1.2rem;margin-bottom:1rem}
+  .pregunta span{font-family:"IBM Plex Mono",monospace;font-size:.78rem;color:var(--laton);display:block;margin-bottom:.35rem}
+  .pregunta p{margin:0;font-style:italic}
+
+  figure{margin:0 0 1.5rem;background:var(--superficie);border:1px solid var(--linea);padding:1.2rem}
+  figure svg{width:100%;height:auto;display:block}
+  figcaption{font-size:.85rem;color:var(--tinta-suave);margin-top:.8rem;font-family:"IBM Plex Sans",sans-serif}
+
+  footer{background:var(--tinta);color:#8fa8bd;padding:2rem 1.5rem;font-size:.85rem;font-family:"IBM Plex Sans",sans-serif}
+  footer div{max-width:1080px;margin:0 auto}
+</style>
+</head>
+<body>
+
+<header class="portada">
+  <div class="portada-inner">
+    <div>
+      <p class="curso">Cloud Computing y DevOps · Laboratorio de Kubernetes</p>
+      <h1>Esta página vive dentro del clúster</h1>
+      <p>No la está sirviendo la máquina virtual: la sirve un contenedor, dentro de un Pod, administrado por un Deployment y alcanzado a través de un Service. Todo lo que va a estudiar hoy es lo que hizo falta para que usted pudiera leer este párrafo.</p>
+    </div>
+
+    <div class="identidad">
+      <h2>Quién respondió esta petición</h2>
+      <dl>
+        <dt>Pod</dt><dd class="destacado" id="d-pod">consultando…</dd>
+        <dt>IP</dt><dd id="d-ip">—</dd>
+        <dt>Nodo</dt><dd id="d-nodo">—</dd>
+        <dt>Namespace</dt><dd id="d-ns">—</dd>
+        <dt>Imagen</dt><dd id="d-img">—</dd>
+        <dt>Arranque</dt><dd id="d-arr">—</dd>
+      </dl>
+      <button id="btn-repetir" type="button">Pedir la página otra vez</button>
+    </div>
+  </div>
+</header>
+
+<div class="lienzo">
+  <nav class="bitacora" aria-label="Contenido">
+    <ol>
+      <li><a href="#que-es">Qué es Kubernetes</a></li>
+      <li><a href="#anatomia">Anatomía del clúster</a></li>
+      <li><a href="#pods">El Pod</a></li>
+      <li><a href="#deployment">El Deployment</a></li>
+      <li><a href="#roles">Roles y permisos</a></li>
+      <li><a href="#exposicion">Exposición a Internet</a></li>
+      <li><a href="#imagen">Del HTML a la imagen</a></li>
+      <li><a href="#pasos">Desarrollo del laboratorio</a></li>
+      <li><a href="#preguntas">Preguntas</a></li>
+      <li><a href="#limpieza">Limpieza</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+  <!-- ================================================================= -->
+  <section id="que-es">
+    <h2>Qué es Kubernetes</h2>
+    <p>Kubernetes es un orquestador de contenedores. La palabra viene del griego <em>κυβερνήτης</em>, el timonel de un barco, y la metáfora es exacta: usted no le dice al timonel cada movimiento del timón, le dice a qué puerto quiere llegar.</p>
+    <p>Esa es la diferencia central con todo lo que probablemente ha usado antes. Con Docker usted da órdenes: <em>arranca este contenedor</em>. Con Kubernetes usted declara un estado deseado: <em>quiero dos réplicas de esta imagen, siempre disponibles, alcanzables en el puerto 80</em>. A partir de ahí un conjunto de procesos llamados controladores ejecuta un <strong>bucle de reconciliación</strong>: comparan sin descanso el estado real del clúster contra el estado que usted declaró y actúan para cerrar la diferencia.</p>
+    <p>Si un contenedor se cae, nadie tiene que enterarse ni reaccionar: el estado real dejó de coincidir con el declarado y el controlador crea otro. Eso es lo que la gente llama autosanación, y no es magia sino un ciclo <code>while</code> muy bien escrito.</p>
+    <div class="nota">
+      <p><b>Imperativo y declarativo.</b> En el laboratorio va a usar los dos estilos. <code>kubectl create deployment …</code> es imperativo y sirve para explorar rápido. <code>kubectl apply -f archivo.yaml</code> es declarativo: el archivo es la fuente de verdad, se versiona en Git y es lo que se usa en producción.</p>
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <section id="anatomia">
+    <h2>Anatomía del clúster</h2>
+    <p>Un clúster tiene dos planos. El <strong>plano de control</strong> decide qué debe pasar; los <strong>nodos de trabajo</strong> lo ejecutan. En un clúster de producción son máquinas distintas; en minikube todo convive en un solo nodo, pero los procesos son exactamente los mismos y se comunican igual, por la red.</p>
+
+    <h3>Plano de control</h3>
+    <table>
+      <thead><tr><th>Componente</th><th>Qué hace</th><th>Si se detiene</th></tr></thead>
+      <tbody>
+        <tr><td>kube-apiserver</td><td>Única puerta de entrada al clúster. Todo (usted, kubectl, los controladores, el kubelet) habla por su API REST. Valida, autentica y autoriza cada petición.</td><td>El clúster queda sordo: nada se puede consultar ni cambiar, pero lo que ya corre sigue corriendo.</td></tr>
+        <tr><td>etcd</td><td>Base de datos clave-valor donde vive el estado declarado del clúster. Es el único componente con estado real.</td><td>Se pierde la memoria del clúster. Por eso en producción se respalda.</td></tr>
+        <tr><td>kube-scheduler</td><td>Decide en qué nodo va a correr cada Pod nuevo, según recursos pedidos, afinidades y restricciones.</td><td>Los Pods nuevos quedan en estado <code>Pending</code> para siempre.</td></tr>
+        <tr><td>kube-controller-manager</td><td>Agrupa los controladores del bucle de reconciliación: réplicas, nodos, cuentas de servicio, endpoints.</td><td>Nadie repone un Pod caído ni ajusta el número de réplicas.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>En cada nodo</h3>
+    <table>
+      <thead><tr><th>Componente</th><th>Qué hace</th><th>Si se detiene</th></tr></thead>
+      <tbody>
+        <tr><td>kubelet</td><td>Agente del nodo. Recibe del apiserver los Pods que le tocan, le pide al runtime que los arranque y reporta su salud.</td><td>El nodo pasa a <code>NotReady</code> y deja de aceptar trabajo.</td></tr>
+        <tr><td>kube-proxy</td><td>Programa las reglas de red (iptables o IPVS) que hacen que la IP de un Service llegue a alguno de sus Pods.</td><td>Los Services dejan de repartir tráfico.</td></tr>
+        <tr><td>containerd</td><td>Runtime de contenedores: descarga imágenes y ejecuta procesos aislados. Es quien realmente corre su aplicación.</td><td>Ningún contenedor puede arrancar en ese nodo.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="nota">
+      <p><b>Compruébelo.</b> En la consola de la máquina virtual, <code>kubectl get pods -n kube-system</code> le muestra todos estos procesos corriendo como Pods. Kubernetes se administra a sí mismo con sus propias reglas.</p>
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <section id="pods">
+    <h2>El Pod</h2>
+    <p>El Pod es la unidad mínima que Kubernetes sabe programar. No es un contenedor: es una envoltura alrededor de uno o varios contenedores que comparten <strong>el mismo espacio de red y los mismos volúmenes</strong>. Los contenedores de un Pod se ven entre sí en <code>localhost</code>, comparten una única dirección IP y viven y mueren juntos, en el mismo nodo.</p>
+    <p>La mayoría de los Pods tienen un solo contenedor. El patrón de varios contenedores se usa cuando uno acompaña al otro: un recolector de bitácoras, un proxy lateral, un contenedor que prepara archivos antes de que arranque el principal.</p>
+
+    <h3>Los Pods son desechables</h3>
+    <p>Esta es la idea que más cuesta al principio. Un Pod no se repara, se reemplaza. Su nombre lleva un sufijo aleatorio, su IP cambia cada vez, y si el nodo se reinicia no vuelve el mismo Pod sino uno nuevo y equivalente. Por eso nunca se guarda información importante dentro de un Pod y por eso nunca se le habla a un Pod por su IP: para eso existe el Service.</p>
+    <p>La tarjeta al inicio de esta página lo demuestra. Ese nombre con sufijo aleatorio es el Pod que atendió su petición, y el botón puede traerle otro distinto.</p>
+
+    <h3>Ciclo de vida</h3>
+    <table>
+      <thead><tr><th>Estado</th><th>Significado</th></tr></thead>
+      <tbody>
+        <tr><td>Pending</td><td>Aceptado por el apiserver, pero todavía sin nodo asignado o descargando la imagen.</td></tr>
+        <tr><td>Running</td><td>Asignado a un nodo y con al menos un contenedor en ejecución.</td></tr>
+        <tr><td>Succeeded</td><td>Todos los contenedores terminaron bien y no se reinician. Típico de tareas por lotes.</td></tr>
+        <tr><td>Failed</td><td>Algún contenedor terminó con error.</td></tr>
+        <tr><td>CrashLoopBackOff</td><td>No es un estado sino un motivo: el contenedor arranca, falla y Kubernetes espera cada vez más entre reintentos. Casi siempre es un error de la aplicación, no del clúster.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ================================================================= -->
+  <section id="deployment">
+    <h2>El Deployment</h2>
+    <p>Usted casi nunca crea Pods a mano, porque un Pod suelto no tiene quien lo reponga. Lo que se crea es un <strong>Deployment</strong>, y él se encarga del resto por medio de una cadena de tres objetos:</p>
+    <pre><code>Deployment  <span class="c">— usted declara: imagen, réplicas, estrategia de actualización</span>
+   └── ReplicaSet  <span class="c">— garantiza que existan exactamente N Pods de una versión</span>
+          └── Pod, Pod  <span class="c">— los procesos que de verdad atienden peticiones</span></code></pre>
+    <p>El Deployment le da tres cosas que un Pod solo no tiene:</p>
+    <ul>
+      <li><strong>Escalado.</strong> Cambiar <code>replicas: 2</code> por <code>replicas: 5</code> y el ReplicaSet crea tres Pods más.</li>
+      <li><strong>Autosanación.</strong> Si borra un Pod, el ReplicaSet nota que faltan y crea otro en segundos. Lo va a comprobar en el paso 5.</li>
+      <li><strong>Actualización progresiva.</strong> Al cambiar la imagen, el Deployment crea un ReplicaSet nuevo y traslada las réplicas de a poco, sin dejar el servicio caído. Si algo sale mal, <code>kubectl rollout undo</code> regresa a la versión anterior porque el ReplicaSet viejo sigue ahí, con cero réplicas, esperando.</li>
+    </ul>
+    <div class="nota">
+      <p><b>Otras formas de correr Pods.</b> <code>DaemonSet</code> pone una copia en cada nodo, útil para agentes de monitoreo. <code>StatefulSet</code> da identidad y almacenamiento estables, para bases de datos. <code>Job</code> y <code>CronJob</code> ejecutan tareas que terminan.</p>
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <section id="roles">
+    <h2>Roles y permisos</h2>
+    <p>La palabra «rol» aparece en dos conversaciones distintas dentro de Kubernetes, y conviene separarlas.</p>
+
+    <h3>El rol de una máquina</h3>
+    <p>Un nodo puede tener el rol de <strong>plano de control</strong> o el de <strong>nodo de trabajo</strong>. Se ve en la columna <code>ROLES</code> de <code>kubectl get nodes</code>. En minikube el único nodo tiene el rol <code>control-plane</code> y además ejecuta cargas de trabajo, algo que en producción se evita con una marca llamada <em>taint</em> que impide programar aplicaciones sobre el plano de control.</p>
+
+    <h3>El rol como permiso: RBAC</h3>
+    <p>El segundo sentido es el control de acceso basado en roles, y es el que gobierna qué puede hacer cada quien contra el apiserver. Se arma con cuatro piezas:</p>
+    <table>
+      <thead><tr><th>Objeto</th><th>Para qué sirve</th></tr></thead>
+      <tbody>
+        <tr><td>Role</td><td>Lista de permisos <em>dentro de un namespace</em>: sobre qué recursos (<code>pods</code>, <code>services</code>) y con qué verbos (<code>get</code>, <code>list</code>, <code>create</code>, <code>delete</code>).</td></tr>
+        <tr><td>ClusterRole</td><td>Lo mismo, pero válido en todo el clúster y para recursos que no viven en un namespace, como los nodos.</td></tr>
+        <tr><td>RoleBinding</td><td>Une un Role con quien lo va a usar. Sin la unión, el Role no concede nada.</td></tr>
+        <tr><td>ServiceAccount</td><td>La identidad que usan las aplicaciones que corren dentro del clúster. Las personas se autentican con certificados o con un proveedor externo; los programas, con una cuenta de servicio.</td></tr>
+      </tbody>
+    </table>
+    <p>RBAC parte de negar todo: si ningún binding le concede un verbo sobre un recurso, la respuesta es no. En el paso 8 va a crear una cuenta llamada <code>observador</code> que puede listar Pods pero no borrarlos, y lo va a verificar sin cambiar de usuario, con <code>kubectl auth can-i</code>.</p>
+  </section>
+
+  <!-- ================================================================= -->
+  <section id="exposicion">
+    <h2>Exposición a Internet</h2>
+    <p>Los Pods tienen IPs privadas y efímeras, así que hace falta algo estable delante de ellos. Ese algo es el <strong>Service</strong>: un nombre y una IP virtual que no cambian, con una lista de Pods detrás que kube-proxy mantiene al día y entre los cuales reparte el tráfico.</p>
+    <table>
+      <thead><tr><th>Tipo</th><th>Alcance</th><th>Cuándo se usa</th></tr></thead>
+      <tbody>
+        <tr><td>ClusterIP</td><td>Solo desde dentro del clúster</td><td>El valor por omisión. Comunicación entre servicios internos.</td></tr>
+        <tr><td>NodePort</td><td>IP del nodo, puerto entre 30000 y 32767</td><td>Exponer algo hacia afuera sin balanceador. Es el que usa este laboratorio.</td></tr>
+        <tr><td>LoadBalancer</td><td>IP pública del proveedor de nube</td><td>Producción en AWS, Azure o GCP: el proveedor crea un balanceador real.</td></tr>
+        <tr><td>Ingress</td><td>Puertos 80 y 443, enrutando por nombre y ruta</td><td>Varios sitios detrás de una sola entrada, con TLS. No es un Service sino una regla que consume un controlador.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>El camino que siguió esta página</h3>
+    <figure>
+      <svg viewBox="0 0 880 210" role="img" aria-label="Recorrido de la petición desde el navegador hasta el contenedor">
+        <defs>
+          <marker id="flecha" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 z" fill="#41566b"/>
+          </marker>
+          <style>
+            .caja{fill:#ffffff;stroke:#12263a;stroke-width:1.2}
+            .caja-ext{fill:#edf0f3;stroke:#a8823c;stroke-width:1.2}
+            .caja-pod{fill:#e7f2f1;stroke:#0b6e6a;stroke-width:1.4}
+            .rot{font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;fill:#12263a}
+            .sub{font-family:'IBM Plex Mono',monospace;font-size:10.5px;fill:#41566b}
+            .lin{stroke:#41566b;stroke-width:1.3;marker-end:url(#flecha)}
+            .zona{font-family:'IBM Plex Mono',monospace;font-size:10px;fill:#8695a4}
+          </style>
+        </defs>
+
+        <rect x="230" y="12" width="640" height="186" fill="none" stroke="#cfd8e0" stroke-dasharray="4 4"/>
+        <text x="240" y="30" class="zona">máquina virtual en Azure</text>
+        <rect x="470" y="46" width="392" height="140" fill="none" stroke="#cfd8e0" stroke-dasharray="4 4"/>
+        <text x="480" y="64" class="zona">contenedor de minikube · 192.168.49.2</text>
+
+        <rect class="caja-ext" x="12" y="82" width="106" height="52" rx="2"/>
+        <text x="30" y="106" class="rot">Navegador</text>
+        <text x="30" y="122" class="sub">su equipo</text>
+
+        <rect class="caja-ext" x="140" y="82" width="74" height="52" rx="2"/>
+        <text x="158" y="106" class="rot">NSG</text>
+        <text x="152" y="122" class="sub">:30080</text>
+
+        <rect class="caja" x="244" y="82" width="106" height="52" rx="2"/>
+        <text x="262" y="106" class="rot">socat</text>
+        <text x="256" y="122" class="sub">0.0.0.0:30080</text>
+
+        <rect class="caja" x="376" y="82" width="78" height="52" rx="2"/>
+        <text x="386" y="106" class="rot">kube-</text>
+        <text x="386" y="121" class="rot">proxy</text>
+
+        <rect class="caja" x="492" y="82" width="106" height="52" rx="2"/>
+        <text x="508" y="106" class="rot">Service</text>
+        <text x="502" y="122" class="sub">NodePort</text>
+
+        <rect class="caja-pod" x="636" y="44" width="150" height="50" rx="2"/>
+        <text x="654" y="66" class="rot">Pod guia-…-a1b2</text>
+        <text x="654" y="82" class="sub">nginx :80</text>
+
+        <rect class="caja-pod" x="636" y="122" width="150" height="50" rx="2"/>
+        <text x="654" y="144" class="rot">Pod guia-…-c3d4</text>
+        <text x="654" y="160" class="sub">nginx :80</text>
+
+        <line class="lin" x1="120" y1="108" x2="136" y2="108"/>
+        <line class="lin" x1="216" y1="108" x2="240" y2="108"/>
+        <line class="lin" x1="352" y1="108" x2="372" y2="108"/>
+        <line class="lin" x1="456" y1="108" x2="488" y2="108"/>
+        <path class="lin" d="M600,100 C618,96 618,72 632,70" fill="none"/>
+        <path class="lin" d="M600,118 C618,122 618,144 632,146" fill="none"/>
+      </svg>
+      <figcaption>Su petición cruzó cinco fronteras antes de llegar al contenedor. El reparto entre los dos Pods del final es lo que cambia el nombre en la tarjeta de arriba.</figcaption>
+    </figure>
+
+    <h3>Por qué hace falta el reenvío</h3>
+    <p>Con el controlador <code>docker</code>, minikube no corre directamente sobre la máquina virtual: corre dentro de un contenedor con su propia red, típicamente <code>192.168.49.2</code>. El NodePort escucha en esa dirección interna, que Internet no puede alcanzar. Por eso la máquina virtual ejecuta un pequeño reenvío TCP con <code>socat</code>, instalado como servicio de systemd, que toma el puerto 30080 de todas las interfaces y lo entrega al mismo puerto del nodo minikube.</p>
+    <p>En un clúster de verdad esta pieza no existe: el NodePort escucha en la IP real del nodo, o directamente se usa un Service de tipo <code>LoadBalancer</code> y el proveedor de nube pone el balanceador.</p>
+    <div class="nota aviso">
+      <p><b>El NSG es la única puerta.</b> El Dashboard de Kubernetes que va a abrir en el paso 7 viene del complemento de minikube y no pide contraseña. Si la regla del NSG permite <code>0.0.0.0/0</code>, cualquiera en Internet obtiene control total del clúster en segundos. La regla debe apuntar únicamente a su IP pública, y la máquina virtual debe quedar apagada cuando no la esté usando.</p>
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <section id="imagen">
+    <h2>Del HTML a la imagen</h2>
+    <p>Kubernetes no despliega archivos ni repositorios: despliega imágenes de contenedor. Antes de que esta página pudiera existir como Pod, alguien tuvo que empaquetarla junto con el servidor web que la sirve. Esa es la primera mitad del laboratorio y conviene entenderla bien, porque es donde se decide qué tan repetible será todo lo demás.</p>
+
+    <h3>Imagen y contenedor no son lo mismo</h3>
+    <p>La <strong>imagen</strong> es una plantilla inmutable: un sistema de archivos congelado, hecho de capas apiladas, más los metadatos que dicen qué proceso arrancar. El <strong>contenedor</strong> es una instancia en ejecución de esa imagen, con una capa de escritura encima que se descarta al terminar. De una imagen salen tantos contenedores como se quiera, todos idénticos. Es la misma relación que hay entre un archivo ISO y las máquinas virtuales que se instalan desde él.</p>
+    <p>De ahí viene una regla que se repite en todo Kubernetes: lo que se escriba dentro de un contenedor desaparece con él. Si el dato debe sobrevivir, va en un volumen, no en la capa de escritura.</p>
+
+    <h3>El Dockerfile, línea por línea</h3>
+    <p>El <code>Dockerfile</code> es la receta. Cada instrucción que modifica el sistema de archivos crea una capa nueva, y las capas se cachean: si una no cambió, la reconstrucción la reutiliza y sigue con la siguiente.</p>
+    <pre><code>FROM nginx:1.29-alpine              <span class="c"># capa base: servidor web ya instalado</span>
+LABEL autor="..." curso="..."       <span class="c"># metadatos, no cambian el comportamiento</span>
+COPY 00-keepalive.conf /etc/nginx/conf.d/
+COPY 30-pod-info.sh /docker-entrypoint.d/
+RUN chmod +x /docker-entrypoint.d/30-pod-info.sh
+COPY index.html /usr/share/nginx/html/   <span class="c"># lo que más cambia, de último</span>
+EXPOSE 80                           <span class="c"># documenta el puerto; no abre nada</span></code></pre>
+    <table>
+      <thead><tr><th>Instrucción</th><th>Qué hace y por qué está ahí</th></tr></thead>
+      <tbody>
+        <tr><td>FROM</td><td>Fija la base. Se escribe la versión exacta, <code>1.29-alpine</code>, y nunca <code>latest</code>: una imagen reproducible es la diferencia entre un despliegue que se puede repetir y uno que depende del día en que se construyó. La variante <code>alpine</code> pesa unos 50 MB contra los 190 MB de la imagen completa.</td></tr>
+        <tr><td>COPY</td><td>Trae archivos desde el <em>contexto de construcción</em>, que es la carpeta que usted indica al final del comando. Todo lo que esté en esa carpeta se le entrega al constructor, así que conviene que no tenga basura.</td></tr>
+        <tr><td>RUN</td><td>Ejecuta algo durante la construcción y guarda el resultado en una capa. En tiempo de ejecución ya no vuelve a correr.</td></tr>
+        <tr><td>EXPOSE</td><td>Solo documenta. Quien de verdad publica el puerto hacia afuera es el Service de Kubernetes.</td></tr>
+        <tr><td>CMD / ENTRYPOINT</td><td>Aquí no aparecen porque se heredan de <code>nginx</code>. Definen el proceso principal, y el contenedor vive exactamente lo que viva ese proceso: si se manda al fondo, el contenedor termina de inmediato.</td></tr>
+      </tbody>
+    </table>
+    <p>El orden de los <code>COPY</code> no es casual. Editar <code>index.html</code> invalida su capa y todas las que vengan después, así que ese archivo va de último: la reconstrucción tarda segundos en lugar de rehacerlo todo.</p>
+
+    <h3>Un detalle propio de este laboratorio</h3>
+    <p>La imagen incluye un script en <code>/docker-entrypoint.d/</code>. La imagen oficial de nginx ejecuta todo lo que encuentre en esa carpeta antes de arrancar el servidor, y este escribe <code>pod.json</code> con el nombre del Pod, su IP y su nodo. Esos valores llegan al contenedor como variables de entorno declaradas en el manifiesto con la <strong>API descendante</strong>. Es el mecanismo estándar para que una aplicación sepa algo de sí misma sin tener que consultar al apiserver.</p>
+
+    <h3>Dónde queda guardada la imagen</h3>
+    <p>Aquí hay dos almacenes distintos y confundirlos es el error más común del laboratorio. La máquina virtual tiene su propio Docker; el nodo de minikube corre containerd <em>adentro</em> de un contenedor y tiene su propio almacén. Una imagen construida en el primero no existe para el segundo.</p>
+    <table>
+      <thead><tr><th>Camino</th><th>Comando</th><th>Cuándo conviene</th></tr></thead>
+      <tbody>
+        <tr><td>Construir adentro</td><td><code>minikube image build -t portal:1.0 .</code></td><td>Lo que usamos. Un solo paso y la imagen queda donde el clúster la necesita.</td></tr>
+        <tr><td>Construir afuera y cargar</td><td><code>docker build …</code> + <code>minikube image load portal:1.0</code></td><td>Cuando quiere probar el contenedor suelto con Docker antes de meterlo al clúster.</td></tr>
+        <tr><td>Publicar en un registro</td><td><code>docker push registro/portal:1.0</code></td><td>Lo real. Cualquier nodo de cualquier clúster puede descargarla; es lo que hace un pipeline de CI.</td></tr>
+      </tbody>
+    </table>
+    <div class="nota">
+      <p><b>Por eso <code>imagePullPolicy: IfNotPresent</code>.</b> Con la política por omisión, Kubernetes ve una etiqueta que no reconoce, intenta descargarla de Docker Hub, no la encuentra y deja el Pod en <code>ErrImagePull</code>. Esa política le dice que use la copia local si ya está. En producción se hace al revés: etiquetas inmutables y descarga desde un registro.</p>
+    </div>
+
+    <h3>Versionar la etiqueta, no el contenido</h3>
+    <p>Una imagen etiquetada <code>portal:1.0</code> debería significar siempre exactamente los mismos bytes. Si usted cambia el HTML y reconstruye con la misma etiqueta, el clúster no tiene forma de notar la diferencia: los Pods que ya corren siguen con la versión vieja y <code>kubectl rollout</code> no tiene nada que hacer, porque el manifiesto no cambió. Por eso cada cambio lleva etiqueta nueva, y por eso <code>latest</code> es una mala idea en cualquier clúster serio.</p>
+  </section>
+
+  <!-- ================================================================= -->
+  <section id="pasos">
+    <h2>Desarrollo del laboratorio</h2>
+    <p>Todos los comandos se ejecutan por SSH en la máquina virtual. Reemplace <code>FQDN</code> por el nombre público de su máquina, algo como <code>k8slab-xxxx.eastus2.cloudapp.azure.com</code>.</p>
+
+    <ol class="pasos">
+
+      <li>
+        <h3>Reconocer el clúster</h3>
+        <p>Antes de desplegar nada, mire lo que ya está corriendo. La segunda orden le muestra el plano de control completo, cada componente como un Pod.</p>
+        <pre><code>kubectl get nodes -o wide
+kubectl get pods -n kube-system
+kubectl cluster-info
+minikube ip        <span class="c"># la IP interna del nodo: 192.168.49.2</span></code></pre>
+      </li>
+
+      <li>
+        <h3>Construir la imagen de esta guía</h3>
+        <p>Primero revise el contexto de construcción: son cuatro archivos y todos terminan dentro de la imagen.</p>
+        <pre><code>cd ~/lab/app-guia
+ls -la
+cat Dockerfile</code></pre>
+        <p>Pruebe el contenedor <em>suelto</em>, con Docker, antes de entregárselo a Kubernetes. Si algo está mal en la imagen, es mucho más rápido descubrirlo aquí que persiguiendo un Pod en <code>CrashLoopBackOff</code>.</p>
+        <pre><code>docker build -t guia-k8s:1.0 .
+docker run -d --name prueba -p 8081:80 guia-k8s:1.0
+curl -s localhost:8081 | head -5
+curl -s localhost:8081/pod.json      <span class="c"># sin variables: dirá "desconocido"</span>
+docker logs prueba | head
+docker rm -f prueba</code></pre>
+        <p>Ahora constrúyala <strong>dentro</strong> de minikube, que es donde el clúster puede verla. La imagen que acaba de crear vive en el Docker de la máquina virtual, no en el containerd del nodo.</p>
+        <pre><code>minikube image build -t guia-k8s:1.0 .
+minikube image ls | grep guia-k8s</code></pre>
+        <p>Si prefiere reutilizar la que ya construyó con Docker, el equivalente es <code>minikube image load guia-k8s:1.0</code>. Compruebe la diferencia entre los dos almacenes:</p>
+        <pre><code>docker images | grep guia-k8s                 <span class="c"># almacén de la VM</span>
+minikube ssh -- sudo crictl images | grep guia  <span class="c"># almacén del nodo</span></code></pre>
+      </li>
+
+      <li>
+        <h3>Desplegar la guía y abrirla</h3>
+        <pre><code>cd ~/lab/manifests
+kubectl apply -f 00-namespace.yaml
+kubectl apply -f 10-deployment-guia.yaml
+kubectl apply -f 11-service-guia.yaml
+kubectl -n lab rollout status deployment/guia</code></pre>
+        <p>Abra <code>http://FQDN:30080</code> en su navegador. A partir de aquí puede seguir leyendo desde el clúster.</p>
+      </li>
+
+      <li>
+        <h3>Observar los Pods</h3>
+        <p>Cuatro órdenes que va a usar todos los días. <code>describe</code> termina con la lista de eventos, que es el primer sitio donde mirar cuando algo falla.</p>
+        <pre><code>kubectl -n lab get pods -o wide
+kubectl -n lab describe pod &lt;nombre-del-pod&gt;
+kubectl -n lab logs -l app=guia --tail=20
+kubectl -n lab exec -it &lt;nombre-del-pod&gt; -- sh
+  <span class="c"># dentro del contenedor:</span>
+  cat /usr/share/nginx/html/pod.json
+  exit</code></pre>
+        <p>Vuelva al navegador y pulse varias veces «Pedir la página otra vez». El nombre del Pod cambia: el Service está repartiendo entre las dos réplicas.</p>
+      </li>
+
+      <li>
+        <h3>Escalar y comprobar la autosanación</h3>
+        <pre><code>kubectl -n lab scale deployment/guia --replicas=4
+kubectl -n lab get pods -w      <span class="c"># Ctrl-C para salir</span>
+
+<span class="c"># Borre un Pod a propósito y observe cuánto tarda en volver:</span>
+kubectl -n lab delete pod &lt;nombre-del-pod&gt;
+kubectl -n lab get pods</code></pre>
+        <p>Fíjese en que el Pod que aparece tiene un nombre distinto. No resucitó: el ReplicaSet creó uno nuevo.</p>
+      </li>
+
+      <li>
+        <h3>Actualización progresiva y reversión</h3>
+        <p>Construya una segunda versión de la imagen y publíquela sin interrumpir el servicio.</p>
+        <pre><code>cd ~/lab/app-guia
+sed -i 's|vive dentro del clúster|vive dentro del clúster · v2|' index.html
+minikube image build -t guia-k8s:2.0 .
+
+kubectl -n lab set image deployment/guia guia=guia-k8s:2.0
+kubectl -n lab rollout status deployment/guia
+kubectl -n lab get replicasets
+
+<span class="c"># Regrese a la versión anterior:</span>
+kubectl -n lab rollout undo deployment/guia
+kubectl -n lab rollout history deployment/guia</code></pre>
+        <p>Recargue el navegador mientras corre <code>rollout status</code>: el servicio nunca se cae, porque <code>maxUnavailable: 0</code> obliga a mantener dos Pods disponibles durante el cambio. Y fíjese en que el campo «Imagen» de la tarjeta sigue diciendo <code>1.0</code>: ese texto está escrito a mano en el manifiesto y <code>set image</code> no lo toca. Lo que una aplicación afirma sobre sí misma solo es tan cierto como su configuración.</p>
+      </li>
+
+      <li>
+        <h3>Publicar el Dashboard</h3>
+        <p>El complemento ya está instalado; falta darle una puerta de salida con un Service de tipo NodePort.</p>
+        <pre><code>kubectl apply -f ~/lab/manifests/40-dashboard-nodeport.yaml
+kubectl -n kubernetes-dashboard get svc</code></pre>
+        <p>Abra <code>http://FQDN:30090</code>. Recorra Workloads, Pods y Services y ubique el Deployment que creó. Con el complemento <code>metrics-server</code> habilitado, también puede pedir consumo desde la consola:</p>
+        <pre><code>kubectl top nodes
+kubectl top pods -n lab</code></pre>
+      </li>
+
+      <li>
+        <h3>RBAC: una cuenta que solo mira</h3>
+        <pre><code>kubectl apply -f ~/lab/manifests/20-rbac-observador.yaml
+
+<span class="c"># Verificación sin cambiar de identidad, suplantando a la cuenta:</span>
+kubectl auth can-i list pods   --as=system:serviceaccount:lab:observador -n lab
+kubectl auth can-i delete pods --as=system:serviceaccount:lab:observador -n lab
+kubectl auth can-i list pods   --as=system:serviceaccount:lab:observador -n kube-system</code></pre>
+        <p>Debe obtener <code>yes</code>, <code>no</code> y <code>no</code>. La tercera respuesta muestra que un Role solo vale dentro de su propio namespace.</p>
+      </li>
+
+      <li>
+        <h3>Construya y publique su propio portal</h3>
+        <p>Ahora el ciclo completo por su cuenta, con la carpeta <code>~/lab/app-portal</code>. Empiece por personalizar la página y el metadato de autor de la imagen.</p>
+        <pre><code>cd ~/lab/app-portal
+nano index.html      <span class="c"># cambie el título y ponga su nombre</span>
+nano Dockerfile      <span class="c"># reemplace el LABEL autor</span></code></pre>
+        <p>Construya la imagen y verifique que el clúster la ve:</p>
+        <pre><code>minikube image build -t portal:1.0 .
+minikube image ls | grep portal</code></pre>
+        <p>El Deployment ya está escrito; <strong>el Service lo escribe usted</strong>. Tome <code>11-service-guia.yaml</code> como modelo, cámbiele el namespace, el selector y el <code>nodePort</code> a 30081, y guárdelo como <code>mi-service.yaml</code>. Solo después compare con el archivo de referencia.</p>
+        <pre><code>cd ~/lab/manifests
+kubectl apply -f 00-namespace.yaml
+kubectl apply -f 50-deployment-portal.yaml
+kubectl apply -f mi-service.yaml          <span class="c"># el suyo</span>
+kubectl -n portal get deployment,pod,svc
+diff mi-service.yaml 51-service-portal.yaml</code></pre>
+        <p>Abra <code>http://FQDN:30081</code>. Si el navegador no responde, mire primero los <em>endpoints</em>: si la lista sale vacía, el selector del Service no coincide con las etiquetas de los Pods, que es el error más frecuente.</p>
+        <pre><code>kubectl -n portal get endpoints portal
+kubectl -n portal describe svc portal</code></pre>
+        <p>Para cerrar, edite otra vez la página, construya <code>portal:1.1</code> y publíquela con una actualización progresiva. Compruebe que etiquetar la versión nueva —y no reconstruir sobre <code>1.0</code>— es lo que le permite a Kubernetes ver el cambio.</p>
+        <pre><code>cd ~/lab/app-portal &amp;&amp; minikube image build -t portal:1.1 .
+kubectl -n portal set image deployment/portal portal=portal:1.1
+kubectl -n portal rollout status deployment/portal</code></pre>
+      </li>
+
+      <li>
+        <h3>Opcional: Ingress en el puerto 80</h3>
+        <p>En lugar de recordar el puerto 30080, publique la aplicación en el 80 con el controlador de Ingress.</p>
+        <pre><code>kubectl apply -f ~/lab/manifests/30-ingress-guia.yaml
+sudo systemctl enable --now minikube-expose@80
+kubectl -n lab get ingress</code></pre>
+        <p>Abra <code>http://FQDN</code>, ya sin puerto. El NSG debe tener abierto el 80 hacia su IP.</p>
+      </li>
+
+    </ol>
+  </section>
+
+  <!-- ================================================================= -->
+  <section id="preguntas">
+    <h2>Preguntas para entregar</h2>
+    <p>Responda con sus palabras y acompañe cada respuesta con la captura o la salida de consola que la sustenta.</p>
+
+    <div class="pregunta"><span>Pregunta 1</span><p>¿Por qué el Pod que se creó en el paso 5 tiene un nombre distinto del que usted borró? ¿Qué componente lo creó y cómo supo que hacía falta?</p></div>
+    <div class="pregunta"><span>Pregunta 2</span><p>Ejecute <code>kubectl -n lab get pods -o wide</code> y anote las IPs. Reinicie un Pod y vuelva a mirarlas. ¿Qué implica esto para una aplicación que quisiera guardar la IP de otra en un archivo de configuración?</p></div>
+    <div class="pregunta"><span>Pregunta 3</span><p>Durante el paso 6, <code>kubectl -n lab get replicasets</code> muestra dos ReplicaSets. ¿Cuántas réplicas tiene cada uno y por qué Kubernetes conserva el antiguo en lugar de borrarlo?</p></div>
+    <div class="pregunta"><span>Pregunta 4</span><p>Explique el recorrido completo de una petición desde su navegador hasta el proceso nginx, nombrando en orden cada pieza que la atiende. Indique cuál de ellas no existiría en un clúster de producción y por qué.</p></div>
+    <div class="pregunta"><span>Pregunta 5</span><p>La cuenta <code>observador</code> puede listar Pods en <code>lab</code> pero no en <code>kube-system</code>. ¿Qué objeto habría que cambiar para concederle esa lectura en todo el clúster, y por qué eso es una decisión de seguridad y no un detalle técnico?</p></div>
+    <div class="pregunta"><span>Pregunta 6</span><p>Detenga el clúster con <code>minikube stop</code> y vuelva a arrancarlo con <code>minikube start</code>. ¿Sobrevivieron el Deployment y el Service? ¿Dónde estaba guardada esa información?</p></div>
+    <div class="pregunta"><span>Pregunta 7</span><p>Construyó la imagen con <code>docker build</code> y el Pod quedó en <code>ErrImagePull</code> hasta que la construyó con <code>minikube image build</code>. Explique dónde estaba guardada cada copia y por qué el clúster no veía la primera.</p></div>
+    <div class="pregunta"><span>Pregunta 8</span><p>Reconstruya la imagen del portal cambiando el HTML pero conservando la etiqueta <code>1.0</code>, y aplique de nuevo el Deployment. ¿Cambió algo en el navegador? ¿Por qué, y qué dice esto sobre usar <code>latest</code> en producción?</p></div>
+    <div class="pregunta"><span>Pregunta 9</span><p>Compare este montaje con un servicio administrado como AKS, EKS o GKE. Nombre tres responsabilidades que usted asumió en este laboratorio y que en un servicio administrado asume el proveedor.</p></div>
+  </section>
+
+  <!-- ================================================================= -->
+  <section id="limpieza">
+    <h2>Limpieza</h2>
+    <p>Los créditos de la suscripción se consumen mientras la máquina esté encendida, aunque nadie la use. Al terminar, borre el grupo de recursos completo desde su equipo:</p>
+    <pre><code>az group delete --name rg-k8s-lab --yes --no-wait</code></pre>
+    <p>Desde el portal: <em>Grupos de recursos</em> → seleccione el suyo → <em>Eliminar grupo de recursos</em> → escriba el nombre para confirmar. Verifique después que no quedan discos ni IPs públicas sueltas, porque esos recursos siguen costando aunque la máquina ya no exista.</p>
+    <p>Si solo quiere pausar entre sesiones, apague la máquina desde el portal con <em>Detener</em> (no basta con <code>shutdown</code> dentro del sistema operativo: el cómputo se sigue facturando si el recurso no queda desasignado).</p>
+  </section>
+
+  </main>
+</div>
+
+<footer>
+  <div>
+    <p>Guía servida por nginx dentro de un Pod · Escuela Colombiana de Ingeniería Julio Garavito · Maestría en Gestión de Información y Tecnología</p>
+  </div>
+</footer>
+
+<script>
+  const campos = {pod:'d-pod', ip:'d-ip', nodo:'d-nodo', namespace:'d-ns', imagen:'d-img', arranque:'d-arr'};
+
+  async function cargarIdentidad(destello = false) {
+    try {
+      const r = await fetch('pod.json?t=' + Date.now(), {cache: 'no-store'});
+      if (!r.ok) throw new Error(r.status);
+      const datos = await r.json();
+      for (const [clave, id] of Object.entries(campos)) {
+        const el = document.getElementById(id);
+        el.textContent = datos[clave] ?? '—';
+        if (destello) { el.classList.remove('parpadeo'); void el.offsetWidth; el.classList.add('parpadeo'); }
+      }
+    } catch (e) {
+      document.getElementById('d-pod').textContent = 'sin datos del Pod';
+    }
+  }
+
+  document.getElementById('btn-repetir').addEventListener('click', () => cargarIdentidad(true));
+  cargarIdentidad();
+</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+# ---------------------------------------------------------------------------
+# RBAC: una identidad que solo puede mirar.
+#
+#   ServiceAccount  +  Role  unidos por un RoleBinding
+#
+# Sin el RoleBinding, el Role no concede nada. RBAC parte de negar todo.
+# ---------------------------------------------------------------------------
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: observador
+  namespace: lab
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: lector-de-pods
+  namespace: lab        # el Role solo vale dentro de este namespace
+rules:
+  - apiGroups: [""]     # "" es el grupo principal (core): pods, services...
+    resources: ["pods", "pods/log", "services"]
+    verbs: ["get", "list", "watch"]   # ni create, ni delete, ni update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: observador-lee-pods
+  namespace: lab
+subjects:
+  - kind: ServiceAccount
+    name: observador
+    namespace: lab
+roleRef:
+  kind: Role
+  name: lector-de-pods
+  apiGroup: rbac.authorization.k8s.io

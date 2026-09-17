@@ -1,0 +1,23 @@
+# ---------------------------------------------------------------------------
+# Service del portal.
+#
+# Escriba usted este archivo antes de mirarlo: tome 11-service-guia.yaml como
+# modelo y cambie namespace, selector y nodePort. Si su versión funciona,
+# compárela con esta para ver qué haría distinto.
+# ---------------------------------------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: portal
+  namespace: portal
+  labels:
+    app: portal
+spec:
+  type: NodePort
+  selector:
+    app: portal      # debe coincidir con las etiquetas del Pod, no con el Deployment
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      nodePort: 30081

@@ -1,0 +1,17 @@
+# Un namespace es una división lógica del clúster: agrupa objetos, permite
+# aplicar cuotas y es el ámbito donde vale un Role de RBAC.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lab
+  labels:
+    curso: cloud-devops
+    proposito: laboratorio-kubernetes
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: portal
+  labels:
+    curso: cloud-devops
+    proposito: portal-del-estudiante

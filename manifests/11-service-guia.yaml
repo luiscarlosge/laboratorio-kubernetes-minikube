@@ -1,0 +1,24 @@
+# ---------------------------------------------------------------------------
+# Service de tipo NodePort.
+#
+#   puerto 30080 del nodo  ->  puerto 80 del Service  ->  puerto 80 del Pod
+#
+# El Service encuentra sus Pods por etiqueta (selector), no por nombre ni por
+# IP: por eso sigue funcionando cuando los Pods se reemplazan.
+# ---------------------------------------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: guia
+  namespace: lab
+  labels:
+    app: guia
+spec:
+  type: NodePort
+  selector:
+    app: guia
+  ports:
+    - name: http
+      port: 80          # puerto del Service dentro del clúster
+      targetPort: 80    # puerto del contenedor
+      nodePort: 30080   # puerto publicado en el nodo (rango 30000-32767)

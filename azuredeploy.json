@@ -1,0 +1,262 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "description": "Laboratorio de Kubernetes con minikube sobre una sola VM Ubuntu 24.04. Crea VNet, NSG filtrado por IP, IP publica con DNS, la VM, la extension Custom Script que instala minikube y un apagado automatico diario."
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": { "description": "Region de los recursos (por defecto, la del grupo de recursos)." }
+    },
+    "vmName": {
+      "type": "string",
+      "defaultValue": "vm-k8s-lab",
+      "metadata": { "description": "Nombre de la maquina virtual." }
+    },
+    "vmSize": {
+      "type": "string",
+      "defaultValue": "Standard_B2ms",
+      "metadata": { "description": "SKU de la VM. Standard_B2ms (2 vCPU / 8 GiB) es el recomendado; Standard_B2s (2 vCPU / 4 GiB) funciona con memoria ajustada." }
+    },
+    "adminUsername": {
+      "type": "string",
+      "defaultValue": "azureuser",
+      "metadata": { "description": "Usuario administrador de la VM. Sera tambien el duenio del clUster minikube." }
+    },
+    "adminPublicKey": {
+      "type": "securestring",
+      "metadata": { "description": "Llave publica SSH (contenido de ~/.ssh/id_rsa.pub o id_ed25519.pub)." }
+    },
+    "allowedSourceIp": {
+      "type": "string",
+      "metadata": { "description": "Unica IP o CIDR autorizado en el NSG. Nunca use 0.0.0.0/0: el Dashboard queda expuesto sin autenticacion." }
+    },
+    "dnsLabel": {
+      "type": "string",
+      "defaultValue": "[concat('k8slab-', uniqueString(resourceGroup().id))]",
+      "metadata": { "description": "Etiqueta DNS de la IP publica. El FQDN queda como <etiqueta>.<region>.cloudapp.azure.com" }
+    },
+    "installScriptUri": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": { "description": "URL cruda del script install-minikube.sh. Si se deja vacio, la VM se crea sin instalar nada y el script se ejecuta a mano." }
+    },
+    "autoShutdownTime": {
+      "type": "string",
+      "defaultValue": "2300",
+      "metadata": { "description": "Hora de apagado automatico diario en formato HHmm, zona horaria de Bogota." }
+    }
+  },
+  "variables": {
+    "vnetName": "[concat(parameters('vmName'), '-vnet')]",
+    "subnetName": "subnet-lab",
+    "nsgName": "[concat(parameters('vmName'), '-nsg')]",
+    "pipName": "[concat(parameters('vmName'), '-pip')]",
+    "nicName": "[concat(parameters('vmName'), '-nic')]",
+    "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnetName'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2023-09-01",
+      "name": "[variables('nsgName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "Permitir-SSH",
+            "properties": {
+              "description": "Acceso por consola a la VM",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "22",
+              "sourceAddressPrefix": "[parameters('allowedSourceIp')]",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 1000,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "Permitir-NodePorts",
+            "properties": {
+              "description": "Rango de NodePort de Kubernetes: guia del laboratorio (30080), app del estudiante (30081) y Dashboard (30090)",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRanges": [ "30080", "30081", "30090" ],
+              "sourceAddressPrefix": "[parameters('allowedSourceIp')]",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 1010,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "Permitir-Ingress-HTTP",
+            "properties": {
+              "description": "Parte opcional del laboratorio: Ingress NGINX publicado en el puerto 80",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "80",
+              "sourceAddressPrefix": "[parameters('allowedSourceIp')]",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 1020,
+              "direction": "Inbound"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2023-09-01",
+      "name": "[variables('vnetName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [ "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgName'))]" ],
+      "properties": {
+        "addressSpace": { "addressPrefixes": [ "10.20.0.0/16" ] },
+        "subnets": [
+          {
+            "name": "[variables('subnetName')]",
+            "properties": {
+              "addressPrefix": "10.20.1.0/24",
+              "networkSecurityGroup": { "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgName'))]" }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "apiVersion": "2023-09-01",
+      "name": "[variables('pipName')]",
+      "location": "[parameters('location')]",
+      "sku": { "name": "Standard" },
+      "properties": {
+        "publicIPAllocationMethod": "Static",
+        "dnsSettings": { "domainNameLabel": "[parameters('dnsLabel')]" }
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2023-09-01",
+      "name": "[variables('nicName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]",
+        "[resourceId('Microsoft.Network/publicIPAddresses', variables('pipName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": { "id": "[variables('subnetRef')]" },
+              "publicIPAddress": { "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('pipName'))]" }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2024-03-01",
+      "name": "[parameters('vmName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [ "[resourceId('Microsoft.Network/networkInterfaces', variables('nicName'))]" ],
+      "properties": {
+        "hardwareProfile": { "vmSize": "[parameters('vmSize')]" },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "Canonical",
+            "offer": "ubuntu-24_04-lts",
+            "sku": "server",
+            "version": "latest"
+          },
+          "osDisk": {
+            "createOption": "FromImage",
+            "diskSizeGB": 32,
+            "managedDisk": { "storageAccountType": "StandardSSD_LRS" }
+          }
+        },
+        "osProfile": {
+          "computerName": "[parameters('vmName')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "linuxConfiguration": {
+            "disablePasswordAuthentication": true,
+            "ssh": {
+              "publicKeys": [
+                {
+                  "path": "[concat('/home/', parameters('adminUsername'), '/.ssh/authorized_keys')]",
+                  "keyData": "[parameters('adminPublicKey')]"
+                }
+              ]
+            }
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [ { "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('nicName'))]" } ]
+        }
+      }
+    },
+    {
+      "condition": "[not(empty(parameters('installScriptUri')))]",
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "apiVersion": "2024-03-01",
+      "name": "[concat(parameters('vmName'), '/instalarMinikube')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [ "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmName'))]" ],
+      "properties": {
+        "publisher": "Microsoft.Azure.Extensions",
+        "type": "CustomScript",
+        "typeHandlerVersion": "2.1",
+        "autoUpgradeMinorVersion": true,
+        "settings": { "fileUris": [ "[parameters('installScriptUri')]" ] },
+        "protectedSettings": {
+          "commandToExecute": "[concat('bash install-minikube.sh ', parameters('adminUsername'))]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.DevTestLab/schedules",
+      "apiVersion": "2018-09-15",
+      "name": "[concat('shutdown-computevm-', parameters('vmName'))]",
+      "location": "[parameters('location')]",
+      "dependsOn": [ "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmName'))]" ],
+      "properties": {
+        "status": "Enabled",
+        "taskType": "ComputeVmShutdownTask",
+        "dailyRecurrence": { "time": "[parameters('autoShutdownTime')]" },
+        "timeZoneId": "SA Pacific Standard Time",
+        "notificationSettings": { "status": "Disabled", "timeInMinutes": 30 },
+        "targetResourceId": "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmName'))]"
+      }
+    }
+  ],
+  "outputs": {
+    "fqdn": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses', variables('pipName'))).dnsSettings.fqdn]"
+    },
+    "ipPublica": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses', variables('pipName'))).ipAddress]"
+    },
+    "comandoSsh": {
+      "type": "string",
+      "value": "[concat('ssh ', parameters('adminUsername'), '@', reference(resourceId('Microsoft.Network/publicIPAddresses', variables('pipName'))).dnsSettings.fqdn)]"
+    },
+    "guiaUrl": {
+      "type": "string",
+      "value": "[concat('http://', reference(resourceId('Microsoft.Network/publicIPAddresses', variables('pipName'))).dnsSettings.fqdn, ':30080')]"
+    },
+    "dashboardUrl": {
+      "type": "string",
+      "value": "[concat('http://', reference(resourceId('Microsoft.Network/publicIPAddresses', variables('pipName'))).dnsSettings.fqdn, ':30090')]"
+    }
+  }
+}

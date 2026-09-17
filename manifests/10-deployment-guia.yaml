@@ -1,0 +1,96 @@
+# ---------------------------------------------------------------------------
+# Deployment de la guía del laboratorio.
+#
+#   Deployment  ->  ReplicaSet  ->  Pods
+#
+# El Deployment declara el estado deseado (2 réplicas de guia-k8s:1.0) y deja
+# que el ReplicaSet se encargue de que ese número se cumpla siempre.
+# ---------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: guia
+  namespace: lab
+  labels:
+    app: guia
+spec:
+  replicas: 2
+
+  # El selector le dice al ReplicaSet qué Pods le pertenecen. Debe coincidir
+  # con las etiquetas de la plantilla; si no, el Deployment no arranca.
+  selector:
+    matchLabels:
+      app: guia
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0     # nunca bajar de 2 Pods disponibles
+      maxSurge: 1           # durante la actualización puede haber 3
+
+  # A partir de aquí empieza la plantilla del Pod.
+  template:
+    metadata:
+      labels:
+        app: guia
+    spec:
+      containers:
+        - name: guia
+          image: guia-k8s:1.0
+
+          # La imagen se construyó dentro de minikube y no existe en ningún
+          # registro. Sin esta política, Kubernetes intentaría descargarla
+          # de Docker Hub y el Pod quedaría en ErrImagePull.
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - name: http
+              containerPort: 80
+
+          # API descendante: el Pod recibe datos sobre sí mismo como variables
+          # de entorno. Es lo que la página muestra en la tarjeta de identidad.
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: IMAGE_TAG
+              value: "guia-k8s:1.0"
+
+          # El scheduler usa "requests" para decidir dónde cabe el Pod;
+          # "limits" es el techo que el runtime hace cumplir.
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+
+          # readiness decide si el Pod recibe tráfico del Service.
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+
+          # liveness decide si hay que reiniciar el contenedor.
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20

@@ -1,0 +1,28 @@
+# ---------------------------------------------------------------------------
+# Ingress (parte opcional).
+#
+# Un Ingress no es un Service: es una regla de enrutamiento que un controlador
+# (aquí, el complemento ingress-nginx de minikube) lee y traduce a su propia
+# configuración. Permite publicar varios sitios en el puerto 80 y enrutarlos
+# por nombre de host o por ruta.
+#
+# Requiere:  minikube addons enable ingress
+#            sudo systemctl enable --now minikube-expose@80
+# ---------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: guia
+  namespace: lab
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: guia
+                port:
+                  number: 80

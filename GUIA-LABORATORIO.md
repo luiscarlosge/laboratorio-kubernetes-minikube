@@ -44,6 +44,7 @@ Una suscripción *Azure for Students* no alcanza para un clúster administrado c
 | `app-portal/` | Imagen del portal que construye el estudiante, con el `Dockerfile` comentado línea por línea |
 | `manifests/` | Los objetos de Kubernetes que va a aplicar: Namespace, Deployment, Service, RBAC, Ingress, Dashboard |
 | `scripts/limpiar.sh` | Deshace el laboratorio dentro de la VM |
+| `diagramas/` | Las figuras de la guía, en PNG y SVG |
 
 ---
 
@@ -97,14 +98,32 @@ Por omisión el NSG bloquea todo el tráfico entrante. Agregue reglas **Inbound*
 
 ---
 
-## 2. Instalar el clúster
+## 2. Clonar el repositorio e instalar el clúster
 
-Copie el paquete a la máquina y ejecute el instalador:
+Todo el material vive en un repositorio público de GitHub:
+
+```
+https://github.com/luiscarlosge/laboratorio-kubernetes-minikube
+```
+
+Conéctese a la máquina y clone el repositorio **allí**, para no tener que copiar archivos desde su equipo:
 
 ```bash
-scp -r k8s-lab-minikube azureuser@FQDN:~/
 ssh azureuser@FQDN
-sudo bash ~/k8s-lab-minikube/install-minikube.sh
+
+sudo apt-get update && sudo apt-get install -y git
+git clone https://github.com/luiscarlosge/laboratorio-kubernetes-minikube.git
+cd laboratorio-kubernetes-minikube
+
+sudo bash install-minikube.sh
+```
+
+Si prefiere no usar `git`, descargue el repositorio comprimido (pero después no podrá actualizar con `git pull`):
+
+```bash
+sudo apt-get install -y unzip
+curl -LO https://github.com/luiscarlosge/laboratorio-kubernetes-minikube/archive/refs/heads/main.zip
+unzip -q main.zip && cd laboratorio-kubernetes-minikube-main
 ```
 
 El script tarda entre 5 y 10 minutos e instala Docker, kubectl y minikube; arranca el clúster con el controlador `docker` y el runtime `containerd`; habilita los complementos `metrics-server`, `dashboard` e `ingress`; y crea dos servicios de systemd:

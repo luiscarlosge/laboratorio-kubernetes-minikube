@@ -5,23 +5,29 @@ guía interactiva que se despliega como contenedor dentro del propio clúster.
 
 ## Despliegue rápido
 
-```bash
-chmod +x deploy.sh
-./deploy.sh                       # crea la VM en Azure y publica las URLs
+Cree la máquina virtual (desde el portal de Azure, o con `deploy.sh` si prefiere Azure CLI),
+conéctese por SSH y clone este repositorio **dentro de la máquina**:
 
-scp -r . azureuser@FQDN:~/k8s-lab-minikube/
+```bash
 ssh azureuser@FQDN
-sudo bash ~/k8s-lab-minikube/install-minikube.sh
+
+sudo apt-get update && sudo apt-get install -y git
+git clone https://github.com/luiscarlosge/laboratorio-kubernetes-minikube.git
+cd laboratorio-kubernetes-minikube
+
+sudo bash install-minikube.sh
 ```
 
-Luego, dentro de la máquina:
+Cierre la sesión SSH y vuelva a entrar (para quedar en el grupo `docker`). El instalador deja
+el material en `~/lab`:
 
 ```bash
 cd ~/lab/app-guia   && minikube image build -t guia-k8s:1.0 .
 cd ~/lab/manifests  && kubectl apply -f 00-namespace.yaml -f 10-deployment-guia.yaml -f 11-service-guia.yaml
 ```
 
-La guía queda en `http://FQDN:30080`.
+La guía queda en `http://FQDN:30080`. Para traer correcciones publicadas después:
+`git pull` dentro de la carpeta clonada.
 
 ## Contenido
 

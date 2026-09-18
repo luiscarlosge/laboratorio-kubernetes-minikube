@@ -362,6 +362,7 @@
     <pre><code>FROM nginx:1.29-alpine              <span class="c"># capa base: servidor web ya instalado</span>
 LABEL autor="..." curso="..."       <span class="c"># metadatos, no cambian el comportamiento</span>
 COPY 00-keepalive.conf /etc/nginx/conf.d/
+RUN sed -i '/keepalive_timeout/d' /etc/nginx/nginx.conf   <span class="c"># la base ya la trae</span>
 COPY 30-pod-info.sh /docker-entrypoint.d/
 RUN chmod +x /docker-entrypoint.d/30-pod-info.sh
 COPY index.html /usr/share/nginx/html/   <span class="c"># lo que más cambia, de último</span>
@@ -428,6 +429,7 @@ curl -s localhost:8081 | head -5
 curl -s localhost:8081/pod.json      <span class="c"># sin variables: dirá "desconocido"</span>
 docker logs prueba | head
 docker rm -f prueba</code></pre>
+        <p class="nota">Si <code>docker logs</code> muestra <code>"keepalive_timeout" directive is duplicate</code>, es que la imagen base ya trae esa directiva en su <code>nginx.conf</code> y nginx no admite la misma dos veces en el bloque <code>http</code>. Por eso el <code>Dockerfile</code> borra la del archivo base con <code>sed</code> antes de dejar la nuestra. Es el mismo error que, dentro del clúster, se ve como un Pod en <code>CrashLoopBackOff</code>.</p>
         <p>Ahora constrúyala <strong>dentro</strong> de minikube, que es donde el clúster puede verla. La imagen que acaba de crear vive en el Docker de la máquina virtual, no en el containerd del nodo.</p>
         <pre><code>minikube image build -t guia-k8s:1.0 .
 minikube image ls | grep guia-k8s</code></pre>

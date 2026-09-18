@@ -25,6 +25,12 @@ LABEL org.opencontainers.image.title="Portal del laboratorio de Kubernetes" \
 # ponen primero los archivos que casi nunca cambian y de ultimo los que cambian
 # en cada edicion: asi las reconstrucciones reutilizan las capas ya cacheadas.
 COPY 00-keepalive.conf /etc/nginx/conf.d/00-keepalive.conf
+
+# La imagen base ya define "keepalive_timeout 65;" dentro del bloque http de
+# /etc/nginx/nginx.conf, y nginx no admite la misma directiva dos veces en el
+# mismo contexto (falla con "directive is duplicate"). Se borra la del archivo
+# base para que la unica que quede sea la de arriba.
+RUN sed -i '/keepalive_timeout/d' /etc/nginx/nginx.conf
 COPY 30-pod-info.sh /docker-entrypoint.d/30-pod-info.sh
 
 # RUN: ejecuta un comando durante la construccion y guarda el resultado en una

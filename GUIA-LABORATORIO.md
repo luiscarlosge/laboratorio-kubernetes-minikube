@@ -220,6 +220,7 @@ Cada instrucción que toca el sistema de archivos crea una capa, y las capas se 
 FROM nginx:1.29-alpine              # capa base: servidor web ya instalado
 LABEL autor="..." curso="..."       # metadatos, no cambian el comportamiento
 COPY 00-keepalive.conf /etc/nginx/conf.d/
+RUN sed -i '/keepalive_timeout/d' /etc/nginx/nginx.conf   # la base ya la trae
 COPY 30-pod-info.sh /docker-entrypoint.d/
 RUN chmod +x /docker-entrypoint.d/30-pod-info.sh
 COPY index.html /usr/share/nginx/html/   # lo que más cambia, de último
@@ -381,6 +382,7 @@ Si solo quiere pausar entre sesiones, use *Detener* desde el portal. Un `shutdow
 |---|---|---|
 | El navegador no conecta al 30080 | La regla del NSG no incluye su IP actual | Revise su IP en `https://api.ipify.org` y edite la regla |
 | El puerto responde pero la página no carga | El reenvío se cayó | `sudo systemctl restart minikube-expose@30080` |
+| Pod en `CrashLoopBackOff` recien construida la imagen | nginx no arranca: `keepalive_timeout` queda declarado dos veces | `kubectl -n lab logs <pod> --previous` muestra el `[emerg]`. El `Dockerfile` debe borrar la directiva del `nginx.conf` base con `sed` |
 | Pod en `ErrImagePull` | La imagen se construyó en el Docker de la VM, no en el almacén del nodo | `minikube image build` o `minikube image load`, y verifique con `minikube image ls` |
 | El Service responde pero no llega a ningún Pod | El selector del Service no coincide con las etiquetas del Pod | `kubectl get endpoints <servicio>`; si sale vacío, corrija el selector |
 | Pod en `Pending` | No hay CPU o memoria suficiente | `kubectl describe pod` y lea los eventos; reduzca `replicas` o use una SKU mayor |

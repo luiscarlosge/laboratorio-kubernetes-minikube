@@ -14,9 +14,6 @@ LABEL org.opencontainers.image.title="Guia del laboratorio de Kubernetes" \
       org.opencontainers.image.description="Pagina estatica con las instrucciones y los conceptos del laboratorio" \
       curso="Cloud Computing y DevOps"
 
-# La pagina estatica
-COPY index.html /usr/share/nginx/html/index.html
-
 # Desactiva keep-alive para que cada peticion se reparta de nuevo entre replicas
 COPY 00-keepalive.conf /etc/nginx/conf.d/00-keepalive.conf
 
@@ -31,6 +28,10 @@ RUN sed -i '/keepalive_timeout/d' /etc/nginx/nginx.conf
 # que la pagina lee para mostrar quien esta respondiendo.
 COPY 30-pod-info.sh /docker-entrypoint.d/30-pod-info.sh
 RUN chmod +x /docker-entrypoint.d/30-pod-info.sh
+
+# El archivo que mas cambia va de ultimo: editarlo invalida su capa y todas las
+# posteriores, asi que dejarlo al final hace que reconstruir tarde segundos.
+COPY index.html /usr/share/nginx/html/index.html
 
 EXPOSE 80
 
